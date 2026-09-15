@@ -3,5 +3,5 @@ min-results 36
 no-status TIMEOUT
 require hardware-unsupported WARN
 contains hardware-unsupported 1234:11e8
-contains core-system Prototype Laptop
+contains core-system PrototypeLaptop
 require core-cpu PASS

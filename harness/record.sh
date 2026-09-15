@@ -44,15 +44,21 @@ mach=$(machine_args)
 fw=$(firmware_args)
 
 if [ "$ARCH" = "x86_64" ]; then
-    smbios="-smbios type=1,manufacturer=${SMBIOS_VENDOR:-Installing Party},product=${SMBIOS_PRODUCT:-Prototype Laptop},version=1.0,serial=livediag.video"
+    smbios="-smbios type=1,manufacturer=${SMBIOS_VENDOR:-InstallingParty},product=${SMBIOS_PRODUCT:-PrototypeLaptop},version=1.0,serial=livediag.video"
 else
     smbios=""
 fi
+
+# A tiny disk that tells the guest to come up in recording mode.
+token_img="$WORKDIR/token.raw"
+dd if=/dev/zero of="$token_img" bs=512 count=1 2>/dev/null
+printf 'livediag.video\n' | dd of="$token_img" conv=notrunc 2>/dev/null
 
 # shellcheck disable=SC2086
 set -- "$qemu" $mach ${MACHINE_EXTRA:-} -m "${MEM:-2560}" -smp "${SMP:-2}" \
     $fw \
     -drive "file=$IMAGE,if=virtio,format=qcow2,snapshot=on" \
+    -drive "file=$token_img,if=virtio,format=raw,readonly=on" \
     ${DISPLAY_ARGS--device virtio-gpu-pci,xres=1024,yres=576} \
     -device qemu-xhci \
     ${NET_ARGS--device virtio-net-pci,netdev=n0 -netdev user,id=n0} \
