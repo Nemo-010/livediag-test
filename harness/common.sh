@@ -34,6 +34,20 @@ machine_args() {
     esac
 }
 
+# Boot straight from the disk.  Without this OVMF spends minutes retrying
+# PXE before it gets around to the hard disk, which starves the recordings.
+boot_args() {
+    case "$ARCH" in
+    x86_64) printf '%s\n' '-boot order=c,menu=off' ;;
+    *) printf '' ;;
+    esac
+}
+
+# Default virtio NIC with its option ROM disabled (no PXE).
+net_default() {
+    printf '%s' '-device virtio-net-pci,netdev=n0,romfile= -netdev user,id=n0'
+}
+
 # Firmware arguments.  On x86_64 OVMF needs a writable variable store, so a
 # copy is made inside WORKDIR.  The exact file names differ between distros
 # (OVMF_CODE.fd, OVMF_CODE_4M.fd, edk2 layout), so try a few matching pairs.

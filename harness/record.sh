@@ -41,6 +41,7 @@ rm -f "$qmp_sock"
 
 qemu=$(qemu_bin)
 mach=$(machine_args)
+boot=$(boot_args)
 fw=$(firmware_args)
 
 if [ "$ARCH" = "x86_64" ]; then
@@ -55,13 +56,13 @@ dd if=/dev/zero of="$token_img" bs=512 count=1 2>/dev/null
 printf 'livediag.video\n' | dd of="$token_img" conv=notrunc 2>/dev/null
 
 # shellcheck disable=SC2086
-set -- "$qemu" $mach ${MACHINE_EXTRA:-} -m "${MEM:-2560}" -smp "${SMP:-2}" \
+set -- "$qemu" $mach $boot ${MACHINE_EXTRA:-} -m "${MEM:-2560}" -smp "${SMP:-2}" \
     $fw \
     -drive "file=$IMAGE,if=virtio,format=qcow2,snapshot=on" \
     -drive "file=$token_img,if=virtio,format=raw,readonly=on" \
     ${DISPLAY_ARGS--device virtio-gpu-pci,xres=1024,yres=576} \
     -device qemu-xhci \
-    ${NET_ARGS--device virtio-net-pci,netdev=n0 -netdev user,id=n0} \
+    ${NET_ARGS-$(net_default)} \
     ${EXTRA_ARGS:-} \
     -fw_cfg "name=opt/livediag/token,string=livediag.video" \
     $smbios \
