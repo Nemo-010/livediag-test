@@ -35,29 +35,48 @@ machine_args() {
 }
 
 # Firmware arguments.  On x86_64 OVMF needs a writable variable store, so a
-# copy is made inside WORKDIR.
+# copy is made inside WORKDIR.  The exact file names differ between distros
+# (OVMF_CODE.fd, OVMF_CODE_4M.fd, edk2 layout), so try a few matching pairs.
 firmware_args() {
     case "$ARCH" in
     x86_64)
-        code=$(find_file \
-            /usr/share/OVMF/OVMF_CODE.fd \
-            /usr/share/OVMF/OVMF_CODE.secboot.fd \
-            /usr/share/edk2/x64/OVMF_CODE.fd \
-            /usr/share/edk2-ovmf/x64/OVMF_CODE.fd) ||
+        code=""
+        vars_src=""
+        for base in /usr/share/OVMF /usr/share/edk2/x64 \
+            /usr/share/edk2-ovmf/x64 /usr/share/edk2/ovmf; do
+            [ -d "$base" ] || continue
+            for c in OVMF_CODE_4M.fd OVMF_CODE.fd OVMF_CODE_4M.secboot.fd \
+                OVMF_CODE.secboot.fd; do
+                [ -f "$base/$c" ] || continue
+                v=$(printf '%s' "$c" | sed 's/CODE/VARS/')
+                if [ -f "$base/$v" ]; then
+                    code="$base/$c"
+                    vars_src="$base/$v"
+                    break 2
+                fi
+            done
+        done
+        if [ -z "$code" ]; then
+            code=$(find /usr/share/OVMF /usr/share/edk2 \
+                /usr/share/edk2-ovmf -name 'OVMF_CODE*.fd' 2>/dev/null | head -n1)
+            vars_src=$(find /usr/share/OVMF /usr/share/edk2 \
+                /usr/share/edk2-ovmf -name 'OVMF_VARS*.fd' 2>/dev/null | head -n1)
+        fi
+        [ -n "$code" ] && [ -n "$vars_src" ] ||
             die "OVMF firmware not found (install ovmf)"
-        vars_src=$(find_file \
-            /usr/share/OVMF/OVMF_VARS.fd \
-            /usr/share/edk2/x64/OVMF_VARS.fd \
-            /usr/share/edk2-ovmf/x64/OVMF_VARS.fd) ||
-            die "OVMF_VARS firmware not found (install ovmf)"
         cp "$vars_src" "$WORKDIR/OVMF_VARS.fd"
         printf '%s' "-drive if=pflash,format=raw,readonly=on,file=$code -drive if=pflash,format=raw,file=$WORKDIR/OVMF_VARS.fd"
         ;;
     aarch64)
         efi=$(find_file \
             /usr/share/AAVMF/QEMU_EFI.fd \
+            /usr/share/AAVMF/AAVMF_CODE.fd \
             /usr/share/edk2/aarch64/QEMU_EFI.fd \
+            /usr/share/edk2/aarch64/AAVMF_CODE.fd \
             /usr/share/qemu-efi-aarch64/QEMU_EFI.fd) ||
+            efi=$(find /usr/share/AAVMF /usr/share/edk2/aarch64 \
+                /usr/share/qemu-efi-aarch64 -name '*EFI*.fd' 2>/dev/null | head -n1)
+        [ -n "$efi" ] ||
             die "aarch64 UEFI firmware not found (install qemu-efi-aarch64)"
         printf '%s' "-bios $efi"
         ;;
