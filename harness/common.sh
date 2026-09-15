@@ -48,38 +48,13 @@ net_default() {
     printf '%s' '-device virtio-net-pci,netdev=n0,romfile= -netdev user,id=n0'
 }
 
-# Firmware arguments.  On x86_64 OVMF needs a writable variable store, so a
-# copy is made inside WORKDIR.  The exact file names differ between distros
-# (OVMF_CODE.fd, OVMF_CODE_4M.fd, edk2 layout), so try a few matching pairs.
+# Firmware arguments.  The x86_64 image is built for BIOS (extlinux) and
+# boots on QEMU's default SeaBIOS, which is fast and reliable.  aarch64 needs
+# UEFI, so AAVMF is passed with -bios.
 firmware_args() {
     case "$ARCH" in
     x86_64)
-        code=""
-        vars_src=""
-        for base in /usr/share/OVMF /usr/share/edk2/x64 \
-            /usr/share/edk2-ovmf/x64 /usr/share/edk2/ovmf; do
-            [ -d "$base" ] || continue
-            for c in OVMF_CODE_4M.fd OVMF_CODE.fd OVMF_CODE_4M.secboot.fd \
-                OVMF_CODE.secboot.fd; do
-                [ -f "$base/$c" ] || continue
-                v=$(printf '%s' "$c" | sed 's/CODE/VARS/')
-                if [ -f "$base/$v" ]; then
-                    code="$base/$c"
-                    vars_src="$base/$v"
-                    break 2
-                fi
-            done
-        done
-        if [ -z "$code" ]; then
-            code=$(find /usr/share/OVMF /usr/share/edk2 \
-                /usr/share/edk2-ovmf -name 'OVMF_CODE*.fd' 2>/dev/null | head -n1)
-            vars_src=$(find /usr/share/OVMF /usr/share/edk2 \
-                /usr/share/edk2-ovmf -name 'OVMF_VARS*.fd' 2>/dev/null | head -n1)
-        fi
-        [ -n "$code" ] && [ -n "$vars_src" ] ||
-            die "OVMF firmware not found (install ovmf)"
-        cp "$vars_src" "$WORKDIR/OVMF_VARS.fd"
-        printf '%s' "-drive if=pflash,format=raw,readonly=on,file=$code -drive if=pflash,format=raw,file=$WORKDIR/OVMF_VARS.fd"
+        printf ''
         ;;
     aarch64)
         efi=$(find_file \
