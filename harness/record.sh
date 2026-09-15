@@ -109,7 +109,9 @@ printf "harness: serial tail:\n"
 tail -n 60 "$serial" 2>/dev/null || true
 
 # A recording that never opened a GTK window is not worth publishing.
-if ! grep -aq 'LIVEDIAG-DIAG zenity-question-rc=5' "$serial" 2>/dev/null; then
+# rc 5 is the dialog timing out, rc 0 is it being answered by the injected
+# key; either proves the desktop drew.  A crash or no display is neither.
+if ! grep -aqE 'LIVEDIAG-DIAG zenity-question-rc=(0|5)' "$serial" 2>/dev/null; then
     printf 'harness: the guest never showed a GUI window; failing the recording\n' >&2
     grep -a 'LIVEDIAG-' "$serial" >&2 2>/dev/null || true
     exit 1
