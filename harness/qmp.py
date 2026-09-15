@@ -83,6 +83,8 @@ def main():
     parser.add_argument("--key-interval", type=float, default=3.0)
     parser.add_argument("--stop-file", default=None,
                         help="stop early when this file appears")
+    parser.add_argument("--stop-key-file", default=None,
+                        help="stop sending keys when this file appears")
     args = parser.parse_args()
 
     os.makedirs(args.frames_dir, exist_ok=True)
@@ -94,6 +96,7 @@ def main():
     next_key = start + args.key_start
     index = 0
     extension = "png"
+    keys_enabled = True
 
     while True:
         now = time.time()
@@ -113,11 +116,15 @@ def main():
                 print(f"qmp: {index} frames", flush=True)
 
         if now >= next_key:
-            try:
-                qmp.send_key("ret")
-            except QMPError as exc:
-                print(f"qmp: key failed: {exc}", file=sys.stderr, flush=True)
-            next_key += args.key_interval
+            if args.stop_key_file and os.path.exists(args.stop_key_file):
+                keys_enabled = False
+            if keys_enabled:
+                try:
+                    qmp.send_key("ret")
+                except QMPError as exc:
+                    print(f"qmp: key failed: {exc}", file=sys.stderr,
+                          flush=True)
+                next_key += args.key_interval
 
         time.sleep(0.05)
 

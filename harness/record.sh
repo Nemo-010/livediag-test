@@ -77,6 +77,20 @@ printf 'harness: %s\n' "${DESC:-no description}"
 "$@" >"$WORKDIR/qemu.log" 2>&1 &
 qemu_pid=$!
 
+# Stop feeding Enter once the run has printed its closing line, so the
+# final summary table is not dismissed the moment it appears.
+(
+    i=0
+    while [ "$i" -lt 1200 ]; do
+        if grep -q 'livediag: done\.' "$serial" 2>/dev/null; then
+            : >"$WORKDIR/stop-keys"
+            break
+        fi
+        sleep 1
+        i=$((i + 1))
+    done
+) &
+
 cleanup() {
     kill "$qemu_pid" 2>/dev/null || true
     wait "$qemu_pid" 2>/dev/null || true
@@ -85,7 +99,8 @@ trap cleanup EXIT INT TERM
 
 if ! python3 "$here/qmp.py" --sock "$qmp_sock" --frames-dir "$frames" \
     --duration "$VIDEO_SECONDS" --fps "$VIDEO_FPS" \
-    --key-start 35 --key-interval 3; then
+    --key-start 35 --key-interval 3 \
+    --stop-key-file "$WORKDIR/stop-keys"; then
     printf 'harness: QMP driver failed; qemu log follows\n' >&2
     tail -n 20 "$WORKDIR/qemu.log" >&2 || true
     exit 1
