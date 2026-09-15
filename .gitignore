@@ -1,0 +1,7 @@
+images/
+out/
+*.qcow2
+*.mp4
+*.ppm
+*.log
+__pycache__/

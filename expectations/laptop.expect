@@ -1,0 +1,8 @@
+# Emulated laptop hardware is detected; the suite still completes.
+min-results 36
+no-status TIMEOUT
+contains core-system Prototype Laptop
+oneof audio-output PASS WARN SKIP
+oneof network-ethernet PASS WARN SKIP
+oneof hardware-unsupported PASS WARN
+require core-cpu PASS

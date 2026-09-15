@@ -1,0 +1,6 @@
+# With no network at all the connectivity test must fail, not hang.
+min-results 36
+no-status TIMEOUT
+require core-cpu PASS
+require network-internet FAIL
+oneof hardware-unsupported PASS WARN

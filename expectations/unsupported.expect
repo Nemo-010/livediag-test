@@ -1,0 +1,7 @@
+# The injected devices have no driver, and the suite must say so.
+min-results 36
+no-status TIMEOUT
+require hardware-unsupported WARN
+contains hardware-unsupported 1234:11e8
+contains core-system Prototype Laptop
+require core-cpu PASS

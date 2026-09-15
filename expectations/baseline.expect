@@ -1,0 +1,9 @@
+# The plain machine runs everything and nothing hangs.
+min-results 36
+no-status TIMEOUT
+require core-cpu PASS
+require core-system PASS
+require storage-rw PASS
+require network-internet PASS
+oneof hardware-unsupported PASS WARN
+not-contains hardware-unsupported 1234:11e8

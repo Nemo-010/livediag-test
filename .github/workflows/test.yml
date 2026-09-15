@@ -1,0 +1,122 @@
+name: livediag test
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  IMAGE_REPO: Nemo-010/livediag-os
+
+jobs:
+  correctness:
+    name: run (${{ matrix.arch }} / ${{ matrix.profile }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x86_64, profile: baseline, timeout: 1800 }
+          - { arch: x86_64, profile: unsupported, timeout: 1800 }
+          - { arch: x86_64, profile: laptop, timeout: 1800 }
+          - { arch: x86_64, profile: bare, timeout: 1800 }
+          - { arch: aarch64, profile: baseline, timeout: 3000 }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install QEMU
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            qemu-system-x86 qemu-system-arm qemu-utils ovmf qemu-efi-aarch64
+
+      - name: Download the image
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p images
+          gh release download --repo "$IMAGE_REPO" \
+            --pattern "livediag-alpine-${{ matrix.arch }}.qcow2" \
+            -D images --clobber
+          ls -lh images
+
+      - name: Run the suite in QEMU
+        env:
+          ARCH: ${{ matrix.arch }}
+          IMAGE: ${{ github.workspace }}/images/livediag-alpine-${{ matrix.arch }}.qcow2
+          WORKDIR: ${{ github.workspace }}/out/${{ matrix.profile }}-${{ matrix.arch }}
+          BOOT_TIMEOUT: ${{ matrix.timeout }}
+        run: sh harness/run.sh ${{ matrix.profile }}
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ matrix.arch }}-${{ matrix.profile }}
+          path: out/${{ matrix.profile }}-${{ matrix.arch }}/
+          if-no-files-found: warn
+
+  video:
+    name: video (${{ matrix.profile }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [video-virtio-gpu, video-virtio-vga, video-vga, video-qxl]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install QEMU and ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            qemu-system-x86 qemu-utils ovmf ffmpeg
+
+      - name: Download the image
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p images
+          gh release download --repo "$IMAGE_REPO" \
+            --pattern "livediag-alpine-x86_64.qcow2" -D images --clobber
+
+      - name: Record the boot and the tests
+        env:
+          ARCH: x86_64
+          IMAGE: ${{ github.workspace }}/images/livediag-alpine-x86_64.qcow2
+          WORKDIR: ${{ github.workspace }}/out/${{ matrix.profile }}
+        run: sh harness/record.sh ${{ matrix.profile }}
+
+      - name: Upload the video
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: video-${{ matrix.profile }}
+          path: out/${{ matrix.profile }}/*.mp4
+          if-no-files-found: warn
+
+  publish:
+    name: publish videos
+    needs: [video]
+    if: always() && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: videos
+          pattern: video-*
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: videos/*.mp4
+          fail_on_unmatched_files: false
+          generate_release_notes: true
