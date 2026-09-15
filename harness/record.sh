@@ -108,4 +108,11 @@ ffmpeg -y -loglevel error -framerate "$VIDEO_ENCODE_FPS" -i "$pattern" \
 printf "harness: serial tail:\n"
 tail -n 60 "$serial" 2>/dev/null || true
 
+# A recording that never opened a GTK window is not worth publishing.
+if ! grep -aq 'LIVEDIAG-DIAG zenity-question-rc=5' "$serial" 2>/dev/null; then
+    printf 'harness: the guest never showed a GUI window; failing the recording\n' >&2
+    grep -a 'LIVEDIAG-' "$serial" >&2 2>/dev/null || true
+    exit 1
+fi
+
 printf 'harness: video written to %s\n' "$WORKDIR/$VIDEO_NAME.mp4"
