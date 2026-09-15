@@ -79,7 +79,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            qemu-system-x86 qemu-utils ovmf ffmpeg
+            qemu-system-x86 qemu-system-modules-spice qemu-utils ovmf ffmpeg
 
       - name: Download the image
         env:
