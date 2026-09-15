@@ -101,7 +101,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: video-${{ matrix.profile }}
-          path: out/${{ matrix.profile }}/*.mp4
+          path: out/${{ matrix.profile }}/
           if-no-files-found: warn
 
   publish:

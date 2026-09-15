@@ -105,4 +105,7 @@ ffmpeg -y -loglevel error -framerate "$VIDEO_ENCODE_FPS" -i "$pattern" \
     -c:v libx264 -pix_fmt yuv420p -movflags +faststart \
     "$WORKDIR/$VIDEO_NAME.mp4"
 
+printf "harness: serial tail:\n"
+tail -n 60 "$serial" 2>/dev/null || true
+
 printf 'harness: video written to %s\n' "$WORKDIR/$VIDEO_NAME.mp4"
